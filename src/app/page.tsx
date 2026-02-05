@@ -18,15 +18,15 @@ export default function Home() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      setUser(user);
-      if (user) {
-        fetchTodos();
-      } else {
-        setLoading(false);
+      if (!user) {
+        router.push("/login");
+        return;
       }
+      setUser(user);
+      fetchTodos();
     };
     getUser();
-  }, []);
+  }, [router]);
 
   const fetchTodos = async () => {
     const { data, error } = await supabase
