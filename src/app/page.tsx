@@ -1,15 +1,31 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase, Todo } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { createClient, Todo } from "@/lib/supabase";
+import { User } from "@supabase/supabase-js";
 
 export default function Home() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
-    fetchTodos();
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setUser(user);
+      if (user) {
+        fetchTodos();
+      } else {
+        setLoading(false);
+      }
+    };
+    getUser();
   }, []);
 
   const fetchTodos = async () => {
@@ -27,11 +43,11 @@ export default function Home() {
   };
 
   const addTodo = async () => {
-    if (inputValue.trim() === "") return;
+    if (inputValue.trim() === "" || !user) return;
 
     const { data, error } = await supabase
       .from("todos")
-      .insert([{ text: inputValue.trim(), completed: false }])
+      .insert([{ text: inputValue.trim(), completed: false, user_id: user.id }])
       .select()
       .single();
 
@@ -76,12 +92,34 @@ export default function Home() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4">
       <div className="max-w-md mx-auto">
-        <h1 className="text-4xl font-bold text-center text-gray-800 dark:text-white mb-8">
-          Todo App
-        </h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-800 dark:text-white">
+            Todo App
+          </h1>
+          {user && (
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              ログアウト
+            </button>
+          )}
+        </div>
+
+        {user && (
+          <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+            {user.email}
+          </div>
+        )}
 
         <div className="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 mb-6">
           <div className="flex gap-2">
